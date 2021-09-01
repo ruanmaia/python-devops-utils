@@ -11,6 +11,7 @@ loguru = "*"
 tqdm = "*"
 python-magic = "*"
 python-slugify = "*"
+click = "*"
 
 [dev-packages]
 
