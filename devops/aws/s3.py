@@ -2,6 +2,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 import sys
+import hashlib
+import re
 
 from tqdm import tqdm
 from loguru import logger
@@ -44,7 +46,7 @@ class S3_DevOps_Utils:
         local_path,
         bucket_name,
         index_file='index.html',
-        error_file=None,
+        error_file='error.html',
         policy=None
     ):
         
@@ -80,16 +82,78 @@ class S3_DevOps_Utils:
                 logger.info('Bucket "{}" successfully created!',response['Location'])
                 logger.info('Now, I will update its content based on this path: "{}"', local_path)
             else:
-                logger.error('Your AWS credentials doesn\'t seem to work!')
+                logger.opt(colors=True).error('<b>Your AWS credentials doesn\'t seem to work!</b>')
                 sys.exit(1)
 
         except:
-            logger.error('Your AWS credentials doesn\'t seem to work!')
+            logger.opt(colors=True).error('<b>Your AWS credentials doesn\'t seem to work!</b>')
             sys.exit(1)
 
-        logger.info("Look to my progress:")
-        self.sync(local_path, bucket_name, dry_run=True)
+        logger.info("Starting syncronization process:")
+        self.sync(local_path, bucket_name)
 
-        logger.opt(colors=True).info('<green>100% - Syncronization completed!</green>')
+        logger.opt(colors=True).info('<green><b>100% completed!</b></green>')
 
-        logger.info("I know, I'm awesome! So, let me turn this bucket into a website...")
+        logger.info('I know, I\'m awesome! So, let me turn this bucket into a website...')
+        logger.info('Checking bucket policy...')
+
+        default_policy = DEFAULT_POLICY.replace('__BUCKET_NAME__', bucket_name).strip()
+        if policy is not None:
+            default_policy = policy.replace('__BUCKET_NAME__', bucket_name).strip()
+
+        try:
+            
+            res = self.__client.get_bucket_policy(Bucket=bucket_name)
+
+            current_bucket_policy = hashlib.md5(
+                self.__policy_sanitizer(res['Policy']).encode()
+            ).hexdigest()
+            
+            updated_bucket_policy = hashlib.md5(
+                self.__policy_sanitizer(default_policy).encode()
+            ).hexdigest()
+
+            if current_bucket_policy == updated_bucket_policy:
+                logger.opt(colors=True).info('<cyan><b>Bucket policy is already updated.</b></cyan> I will just skip this process!')
+            else:
+                logger.opt(colors=True).info('<magenta><b>This bucket policy needs to be updated.</b></magenta> I will do it!')
+                res = self.__client.put_bucket_policy(
+                    Bucket=bucket_name,
+                    Policy=default_policy
+                )
+                logger.opt(colors=True).info('<green><b>Bucket policy successfully updated!</b></green>')
+
+        except ClientError as e:
+            
+            if e.response['Error']['Code'] == 'MalformedPolicy':
+                logger.opt(colors=True).error('<b>{} - {}</b>', e.response['Error']['Code'], e.response['Error']['Message'])
+            else:
+                logger.opt(colors=True).info('<magenta><b>This bucket doesn\'t have any policy.</b></magenta> I will create one...')
+                res = self.__client.put_bucket_policy(
+                    Bucket=bucket_name,
+                    Policy=default_policy
+                )
+                logger.opt(colors=True).info('<green><b>Bucket policy successfully created!</b></green>')
+        except:
+            logger.exception('What is going on?')
+
+        logger.info('Adjust bucket website settings...')
+        try:
+            self.__client.put_bucket_website(
+                Bucket=bucket_name,
+                WebsiteConfiguration={
+                    'ErrorDocument': {
+                        'Key': error_file
+                    },
+                    'IndexDocument': {
+                        'Suffix': index_file
+                    }
+                }
+            )
+            logger.opt(colors=True).info('Your website URL is: <blue><b>http://{}.s3-website-us-east-1.amazonaws.com</b></blue>', bucket_name)
+        except:
+            logger.exception('what?')
+
+    def __policy_sanitizer(self, policy):
+        regex = re.compile("[\n,\s,\t]")
+        return regex.sub('', policy)
