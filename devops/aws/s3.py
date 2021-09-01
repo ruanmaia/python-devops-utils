@@ -4,6 +4,7 @@ from botocore.exceptions import ClientError
 import sys
 import hashlib
 import re
+import mimetypes
 
 from tqdm import tqdm
 from loguru import logger
@@ -32,10 +33,21 @@ class S3_DevOps_Utils:
         total_files = len(files_to_sync)
 
         try:
+            
             for i, f in enumerate(files_to_sync, 1):
                 if not dry_run:
+                    
                     file_key = str(f).replace(local_path, '').lstrip('/')
-                    self.__client.upload_file(str(f), bucket_name, file_key)
+                    mimetype = mimetypes.guess_type(file_key, strict=False)[0]
+
+                    self.__client.upload_file(
+                        str(f), 
+                        bucket_name, 
+                        file_key, 
+                        ExtraArgs={
+                            'ContentType': mimetype if mimetype else ''
+                        }
+                    )
                 if show_progress:
                     logger.opt(colors=True).info('<yellow>{:.2%}</yellow> -> {}', i/total_files, str(f))
         except:

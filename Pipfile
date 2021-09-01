@@ -9,6 +9,7 @@ boto3 = "*"
 cloudflare = "*"
 loguru = "*"
 tqdm = "*"
+python-magic = "*"
 
 [dev-packages]
 
