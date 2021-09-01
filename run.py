@@ -1,5 +1,6 @@
-# CLI Command configuration
-from app import cli
+# CLI modules import
+from cli import cli
+from cli.aws import *
 
-# Executes the application
-if __name__ == '__main__': cli()
+# Run the command line interface
+if __name__ == '__main__': cli(prog_name='devops-utils')
