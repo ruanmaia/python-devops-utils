@@ -162,7 +162,7 @@ class S3_DevOps_Utils:
                     }
                 }
             )
-            logger.opt(colors=True).info('Your website URL is: <blue><b>http://{}.s3-website-us-east-1.amazonaws.com</b></blue>', bucket_name)
+            logger.opt(colors=True).info('Your bucket website URL is: <blue><b>http://{}.s3-website-us-east-1.amazonaws.com</b></blue>', bucket_name)
         except:
             logger.exception('what?')
 
