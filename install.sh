@@ -1,4 +1,4 @@
 #!/bin/bash
 
 pip install -r requirements.txt
-ln -s $(pwd)/devops-utils /usr/bin/devops-utils
+ln -s $(pwd)/devopsctl.sh /usr/bin/devopsctl
