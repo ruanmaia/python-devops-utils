@@ -14,6 +14,10 @@ class AWS_DevOps_Utils:
         )
 
     @property
+    def session(self):
+        return self.__session
+
+    @property
     def s3(self):
         if self.__s3_utils is None:
             self.__s3_utils = S3_DevOps_Utils(self.__session)
