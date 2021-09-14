@@ -8,9 +8,10 @@ config = {
         {
             'sink'      : sys.stdout,
             'format'    : '<green>{time:YYYY:MM:DD HH:mm:ss.SSS}</green> [<level>{level}</level>] <level><n>{message}</n></level>',
-            'colorize'  : True
+            'colorize'  : True,
+            'level'     : 'DEBUG'
         }
-    ]
+    ],
 }
 logger.configure(**config)
 

@@ -12,6 +12,8 @@ tqdm = "*"
 python-magic = "*"
 python-slugify = "*"
 click = "*"
+pyyaml = "*"
+cerberus = "*"
 
 [dev-packages]
 

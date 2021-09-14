@@ -6,7 +6,6 @@ import hashlib
 import re
 import mimetypes
 
-from tqdm import tqdm
 from loguru import logger
 from pathlib import Path
 
@@ -29,6 +28,9 @@ class S3_DevOps_Utils:
         show_progress=True,
         dry_run=False
     ):
+        if show_progress:
+            logger.info("Starting syncronization process:")
+            
         files_to_sync = tuple(f for f in Path(local_path).glob('**/*') if not f.is_dir())
         total_files = len(files_to_sync)
 
@@ -50,6 +52,7 @@ class S3_DevOps_Utils:
                     )
                 if show_progress:
                     logger.opt(colors=True).info('<yellow>{:.2%}</yellow> -> {}', i/total_files, str(f))
+                    logger.opt(colors=True).info('<green><b>100% completed!</b></green>')
         except:
             logger.exception('What is going on?')
 
@@ -101,10 +104,7 @@ class S3_DevOps_Utils:
             logger.opt(colors=True).error('<b>Your AWS credentials doesn\'t seem to work!</b>')
             sys.exit(1)
 
-        logger.info("Starting syncronization process:")
         self.sync(local_path, bucket_name)
-
-        logger.opt(colors=True).info('<green><b>100% completed!</b></green>')
 
         logger.info('I know, I\'m awesome! So, let me turn this bucket into a website...')
         logger.info('Checking bucket policy...')
