@@ -10,6 +10,11 @@ cloudflare = "*"
 loguru = "*"
 tqdm = "*"
 python-magic = "*"
+python-slugify = "*"
+click = "*"
+pyyaml = "*"
+cerberus = "*"
+deepdiff = "*"
 
 [dev-packages]
 
