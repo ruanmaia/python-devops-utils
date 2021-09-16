@@ -4,6 +4,7 @@ import sys
 
 from cerberus import Validator
 from botocore.exceptions import ClientError
+from deepdiff import DeepDiff
 from loguru import logger
 
 
@@ -71,93 +72,87 @@ class ECS_DevOps_Utils:
 
                     'conditions': {
 
-                        'type': 'list',
-                        'default': [],
+                        'type': 'dict',
+                        'default': {
+
+                            'pathPattern'       : [],
+                            'hostHeader'        : [],
+                            'httpHeader'        : {},
+                            'httpRequestMethod' : [],
+                            'sourceIp'          : []
+                        },
                         'schema': {
 
-                            'type': 'dict',
-                            'default': {
-
-                                'pathPattern'       : [],
-                                'hostHeader'        : [],
-                                'httpHeader'        : {},
-                                'httpRequestMethod' : [],
-                                'sourceIp'          : []
+                            'pathPattern': {
+                                
+                                'type': 'list',
+                                'default': [],
+                                'schema': {
+                                    'type': 'string'
+                                }
                             },
 
-                            'schema': {
+                            'hostHeader': {
+                                
+                                'type': 'list',
+                                'default': [],
+                                'schema': {
+                                    'type': 'string'
+                                }
+                            },
 
-                                'pathPattern': {
+                            'httpHeader': {
+                                
+                                'type': 'dict',
+                                'default': {},
+                                'schema': {
                                     
-                                    'type': 'list',
-                                    'default': [],
-                                    'schema': {
-                                        'type': 'string'
-                                    }
-                                },
-
-                                'hostHeader': {
-                                    
-                                    'type': 'list',
-                                    'default': [],
-                                    'schema': {
-                                        'type': 'string'
-                                    }
-                                },
-
-                                'httpHeader': {
-                                    
-                                    'type': 'dict',
-                                    'default': {},
-                                    'schema': {
+                                    'name': {
                                         
-                                        'name': {
-                                            
-                                            'rename'    : 'HttpHeaderName', 
-                                        },
+                                        'rename'    : 'HttpHeaderName', 
+                                    },
 
-                                        'HttpHeaderName': {
-                                            
-                                            'type'      : 'string',
-                                            'required'  : True,
-                                            'empty'     : False
-                                        },
+                                    'HttpHeaderName': {
+                                        
+                                        'type'      : 'string',
+                                        'required'  : True,
+                                        'empty'     : False
+                                    },
 
-                                        'values': {
+                                    'values': {
 
-                                            'rename'    : 'Values'
-                                        },
+                                        'rename'    : 'Values'
+                                    },
 
-                                        'Values': {
-                                            
-                                            'type'      : 'list',
-                                            'required'  : True,
-                                            'minlength' : 1,
-                                            'schema': {
-                                                'type': 'string'
-                                            }
-                                        },
-                                    }
-                                },
+                                    'Values': {
+                                        
+                                        'type'      : 'list',
+                                        'required'  : True,
+                                        'minlength' : 1,
+                                        'schema': {
+                                            'type': 'string'
+                                        }
+                                    },
+                                }
+                            },
 
-                                'httpRequestMethod': {
-                                    
-                                    'type': 'list',
-                                    'default': [],
-                                    'schema': {
-                                        'type': 'string'
-                                    }
-                                },
+                            'httpRequestMethod': {
+                                
+                                'type': 'list',
+                                'default': [],
+                                'schema': {
+                                    'type': 'string'
+                                }
+                            },
 
-                                'sourceIps': {
-                                    
-                                    'type': 'list',
-                                    'default': [],
-                                    'schema': {
-                                        'type': 'string'
-                                    }
-                                },
-                            }
+                            'sourceIps': {
+                                
+                                'type': 'list',
+                                'default': [],
+                                'schema': {
+                                    'type': 'string'
+                                }
+                            },
                         }
                     },
 
@@ -478,10 +473,10 @@ class ECS_DevOps_Utils:
             sys.exit(1)
 
         # Gettings ALB listener rules information
-        logger.info('Looking for AWS/ALB listener rules updates...')
+        logger.info('Checking AWS/ALB listener rules configuration...')
         try:
             res = elbv2.describe_rules(ListenerArn=ALB_LISTENER_ARN, PageSize=101)
-            logger.debug(json.dumps(res, indent=4, default=str))
+            # logger.debug(json.dumps(res, indent=4, default=str))
 
             PRIORITIES = set([int(x['Priority']) for x in res['Rules'] if x['Priority'] != 'default'])
 
@@ -492,27 +487,59 @@ class ECS_DevOps_Utils:
                     break
             
             conditions = []
-            for c in config['loadBalancer']['conditions']:
-                
-                conditions.append({
-                    'HostHeaderConfig': {
-                        'Values': c['hostHeader']
-                    },
-                    'PathPatternConfig': {
-                        'Values': c['pathPattern']
-                    },
-                    'HttpRequestMethodConfig': {
-                        'Values': c['httpRequestMethod']
-                    },
-                    'SourceIpConfig': {
-                        'Values': c['sourceIps']
-                    },
-                    'HttpHeaderConfig': c['httpHeader']
-                })
+            field_map = {
 
-            if not self.__alb_listener_rules_exists(conditions, res['Rules']):
+                'httpHeader'        : 'http-header',
+                'httpRequestMethod' : 'http-request-method',
+                'hostHeader'        : 'host-header',
+                'pathPattern'       : 'path-pattern',
+                'sourceIps'         : 'source-ip'
+            }
+
+            for k, v in config['loadBalancer']['conditions'].items():
+
+                if len(v) > 0:
+                    condition = {
+                        'Field': field_map[k]
+                    }
+
+                    if k == 'hostHeader':
+                        condition.update({
+                            'HostHeaderConfig': {
+                                'Values': v
+                            } 
+                        })
+                    elif k == 'pathPattern':
+                        condition.update({
+                            'PathPatternConfig': {
+                                'Values': v
+                            }
+                        })
+                    elif k == 'httpRequestMethod':
+                        condition.update({
+                            'HttpRequestMethodConfig': {
+                                'Values': v
+                            }
+                        })
+                    elif k == 'sourceIps':
+                        condition.update({
+                            'SourceIpConfig': {
+                                'Values': v
+                            }
+                        })
+                    elif k == 'httpHeader':
+                        condition.update({
+                            'HttpHeaderConfig': v
+                        })
+
+                    conditions.append(condition)
+
+            possible_listener_info = self.__get_possible_alb_listener_rule_info(conditions, TARGET_GROUP_ARN, res['Rules'])
+            logger.debug(possible_listener_info)
+            
+            if not possible_listener_info['exists']:
                 
-                logger.info('Adjusting AWS/ALB listener rule...')
+                logger.info('There\'s no AWS/ALB Listener Rule created for this service. I will create one...')
                 res = elbv2.create_rule(
                     ListenerArn=ALB_LISTENER_ARN,
                     Conditions=conditions,
@@ -520,9 +547,19 @@ class ECS_DevOps_Utils:
                     Actions=[{ 'Type': 'forward', 'TargetGroupArn': TARGET_GROUP_ARN }]
                 )
                 logger.debug(json.dumps(res, indent=4, default=str))
+                logger.opt(colors=True).info('<green><b>AWS/ALB listener rule successfully created!</b></green>')
+                logger.opt(colors=True).info('AWS/ALB Listener Rule ARN: <magenta><b>{}</b></magenta>', res['Rules'][0]['RuleArn'])
             else:
-                logger.opt(colors=True).info('<yellow><b>Nothing to update here!</b></yellow> Keeping going...')
-
+                if possible_listener_info['needs_update']:
+                    logger.opt(colors=True).info('<yellow><b>Your AWS/ALB Listener Rule needs to be updated...</b></yellow>')
+                    res = elbv2.modify_rule(
+                        RuleArn=possible_listener_info['rule_arn'],
+                        Conditions=conditions,
+                        Actions=[{ 'Type': 'forward', 'TargetGroupArn': TARGET_GROUP_ARN }]
+                    )
+                    logger.opt(colors=True).info('<green><b>Everything works fine!</b></green> Now, your AWS/ALB Listener Rule configuration is updated.')
+                else:
+                    logger.opt(colors=True).info('<yellow><b>Nothing to update here!</b></yellow> Keeping going...')
         except:
             logger.exception('What is going on?')
             sys.exit(1)
@@ -587,6 +624,7 @@ class ECS_DevOps_Utils:
                 service_definition['service'] = config['name']
 
                 del service_definition['launchType']
+                del service_definition['loadBalancers']
                 del service_definition['serviceName']
 
                 res = self.__client.update_service(**service_definition)
@@ -602,10 +640,41 @@ class ECS_DevOps_Utils:
             logger.error(e.response['Error']['Message'])
         except:
             logger.exception('What is going on?')
-        
 
-    def __alb_listener_rules_exists(self, rules, stack):
-        for x in stack:
-            if rules == x['Conditions']:
-                return True
-        return False
+
+    def __get_possible_alb_listener_rule_info(
+        self, 
+        new_conditions, 
+        target_group_arn, 
+        available_rules
+        ):
+        
+        data = {
+            'exists'        : False,
+            'rule_arn'      : None,
+            'needs_update'  : True
+        }
+
+        for x in available_rules:
+            if 'Actions' in x:
+                for action in x['Actions']:
+                    if action['Type'] == 'forward'\
+                        and action['TargetGroupArn'] == target_group_arn:
+                        data.update({
+                            'exists'    : True,
+                            'rule_arn'  : x['RuleArn']
+                        })
+
+                        if len(
+                            DeepDiff(
+                                new_conditions, 
+                                x['Conditions'], 
+                                ignore_order=True, 
+                                exclude_regex_paths=r'root\[\d+\]\[\'Values\'\]'
+                            )
+                        ) < 1:
+                            data.update({
+                                'needs_update': False
+                            })
+        return data
+

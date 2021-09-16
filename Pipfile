@@ -14,6 +14,7 @@ python-slugify = "*"
 click = "*"
 pyyaml = "*"
 cerberus = "*"
+deepdiff = "*"
 
 [dev-packages]
 
