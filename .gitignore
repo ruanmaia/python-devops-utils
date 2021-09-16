@@ -131,3 +131,4 @@ dmypy.json
 # Application files
 test.py
 test.yml
+test.json

@@ -628,6 +628,7 @@ class ECS_DevOps_Utils:
                 del service_definition['serviceName']
 
                 res = self.__client.update_service(**service_definition)
+                logger.opt(colors=True).info('<green><b>This service was successfully updated!</b></green>')
             else:
                 
                 # 
@@ -638,8 +639,13 @@ class ECS_DevOps_Utils:
         
         except ClientError as e:
             logger.error(e.response['Error']['Message'])
+            sys.exit(1)
         except:
             logger.exception('What is going on?')
+            sys.exit(1)
+
+        logger.info('So... my job is done!')
+        logger.info('That\'s it for now... See ya!')
 
 
     def __get_possible_alb_listener_rule_info(

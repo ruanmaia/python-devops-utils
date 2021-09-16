@@ -9,7 +9,7 @@ config = {
             'sink'      : sys.stdout,
             'format'    : '<green>{time:YYYY:MM:DD HH:mm:ss.SSS}</green> [<level>{level}</level>] <level><n>{message}</n></level>',
             'colorize'  : True,
-            'level'     : 'DEBUG'
+            'level'     : 'INFO'
         }
     ],
 }

@@ -1,6 +1,7 @@
 from cli.aws import aws_cli
 
 import click
+import sys
 
 ### This command exists just for organization purposes
 @aws_cli.group()
@@ -22,4 +23,15 @@ def website_deploy(
     policy
 ):
     aws_utils = ctx.obj.get('aws_utils_instance', None)
-    aws_utils.s3.website_deploy(local_path, bucket_name, index_file, error_file, policy)
+    if aws_utils is None:
+        aws_ctx = ctx.parent.parent
+        aws_ctx.fail("Please, check your AWS configuration!\n\n{}".format(aws_ctx.get_help()))
+        ctx.exit(1)
+
+    aws_utils.s3.website_deploy(
+        local_path, 
+        bucket_name, 
+        index_file, 
+        error_file, 
+        policy
+    )
