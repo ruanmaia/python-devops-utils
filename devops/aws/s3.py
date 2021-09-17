@@ -52,7 +52,8 @@ class S3_DevOps_Utils:
                     )
                 if show_progress:
                     logger.opt(colors=True).info('<yellow>{:.2%}</yellow> -> {}', i/total_files, str(f))
-                    logger.opt(colors=True).info('<green><b>100% completed!</b></green>')
+            if show_progress:
+                logger.opt(colors=True).info('<green><b>100% completed!</b></green>')
         except:
             logger.exception('What is going on?')
 
