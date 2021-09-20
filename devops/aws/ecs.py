@@ -609,8 +609,8 @@ class ECS_DevOps_Utils:
                         'field' : 'attribute:ecs.availability-zone'
                     },
                     {
-                        'type'  : 'binpack',
-                        'field' : 'memory'
+                        'type'  : 'spread',
+                        'field' : 'instanceId'
                     }
                 ]
             }
